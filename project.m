@@ -1,5 +1,5 @@
-% Exam project
-% Double Pendulum Parameter Estimation using Least Squares (LSQ)
+%% Exam project
+% Double Pendulum Parameter Estimation
 clear; clc;
 
 % Known constants
@@ -8,8 +8,8 @@ m1 = 100;  % Known mass 1
 m2 = 60;   % Known mass 2
 
 % True (unknown) parameters
-L1_true = 2.0; % Length of first cable [m]
-L2_true = 1.5; % Length of second cable [m]
+L1_true = 2.0; % Length 1 [m]
+L2_true = 1.5; % Length 2 [m]
 
 % Time span
 tspan = [0 10];
@@ -26,7 +26,7 @@ theta1 = interp1(tsol, ysol(:,1), t);
 theta2 = interp1(tsol, ysol(:,3), t);
 
 % Noisy measurements
-sigma_epsilon = 0.00001;
+sigma_epsilon = 0.0001;
 theta1_noisy = theta1 + sigma_epsilon * randn(size(theta1));
 theta2_noisy = theta2 + sigma_epsilon * randn(size(theta2));
 
@@ -36,6 +36,8 @@ ddtheta2_noisy = gradient(gradient(theta2_noisy, dt), dt);
 
 % Number of samples
 N = length(t);
+
+%% Estimation #1 - LSQ
 
 % Prepare regression matrices
 X = zeros(2*N, 2);
@@ -65,9 +67,64 @@ L1_est = params_est(1);
 L2_est = params_est(2);
 
 % Display results
+fprintf('Estimation #1 - LSQ\n')
 fprintf('True L1 = %.4f m, Estimated L1 = %.4f m\n', L1_true, L1_est);
 fprintf('True L2 = %.4f m, Estimated L2 = %.4f m\n', L2_true, L2_est);
 
+%% Estimation #2 - Gradient Descent
+% Initial guess
+params0 = [0, 1]';
+
+% GD parameters
+alpha = 1e-10; % Learning rate
+max_iter = 1000;
+tolerance = 1e-6;
+
+for iter = 1:max_iter
+    gradient = 2 * X' * (X*params0 - Y);
+    params_new = params0 - alpha * gradient;
+    
+    if norm(params_new - params0) < tolerance
+        break;
+    end
+    params0 = params_new;
+end
+
+L1_gd = params_new(1);
+L2_gd = params_new(2);
+
+% Display results
+fprintf('Estimation #2 - Gradient Descent\n')
+fprintf('True L1 = %.4f m, Estimated L1 = %.4f m\n', L1_true, L1_est);
+fprintf('True L2 = %.4f m, Estimated L2 = %.4f m\n', L2_true, L2_est);
+
+%% Estimation #3 - Instrumental Variable Estimation
+% Using lagged noisy angles as instruments for regression matrix X
+
+% Construct instruments matrix Z from lagged noisy measurements:
+% Shift theta1_noisy and theta2_noisy by one step to serve as instruments
+Z = zeros(2*N, 2);
+
+for i = 2:N
+    Z(2*i-1, :) = [theta1_noisy(i-1), theta2_noisy(i-1)];
+    Z(2*i, :) = [theta1_noisy(i-1), theta2_noisy(i-1)];
+end
+
+% For the first sample, repeat first instruments
+Z(1, :) = Z(3, :);
+Z(2, :) = Z(4, :);
+
+% Compute IV estimate
+params_iv = (Z' * X) \ (Z' * Y);
+
+L1_iv = params_iv(1);
+L2_iv = params_iv(2);
+
+fprintf('Estimation #3 - Instrumental Variable Estimation\n')
+fprintf('True L1 = %.4f m, Estimated L1 = %.4f m\n', L1_true, L1_iv);
+fprintf('True L2 = %.4f m, Estimated L2 = %.4f m\n', L2_true, L2_iv);
+
+%% Functions
 
 function dydt = double_pendulum_rhs(~, y, m1, m2, L1, L2, g)
     theta1 = y(1);
