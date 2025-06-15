@@ -19,7 +19,7 @@ t = tspan(1):dt:tspan(2);
 % Initial conditions: [theta1, theta1_dot, theta2, theta2_dot]
 theta0 = [0.2; 0; -0.1; 0];
 
-[tsol, ysol] = ode45(@(t, y) double_pendulum_rhs(t, y, m1, m2, L1_true, L2_true, g), t, theta0);
+[tsol, ysol] = ode45(@(t, y) double_pendulum_rhs(y, m1, m2, L1_true, L2_true, g), t, theta0);
 
 % Interpolate to uniform time vector
 theta1 = interp1(tsol, ysol(:,1), t);
@@ -149,17 +149,17 @@ fprintf('True L2 = %.4f m, Estimated L2 = %.4f m\n', L2_true, L2_iv);
 
 %% Plot
 % Simulate with LSQ estimates
-[tsol_LSQ, ysol_LSQ] = ode45(@(t,y) double_pendulum_rhs(t,y,m1,m2,L1_lsq,L2_lsq,g), t, theta0);
+[tsol_LSQ, ysol_LSQ] = ode45(@(t,y) double_pendulum_rhs(y,m1,m2,L1_lsq,L2_lsq,g), t, theta0);
 theta1_est_LSQ = interp1(tsol_LSQ, ysol_LSQ(:,1), t);
 theta2_est_LSQ = interp1(tsol_LSQ, ysol_LSQ(:,3), t);
 
 % Simulate with GD estimates
-[tsol_GD, ysol_GD] = ode45(@(t,y) double_pendulum_rhs(t,y,m1,m2,L1_gd,L2_gd,g), t, theta0);
+[tsol_GD, ysol_GD] = ode45(@(t,y) double_pendulum_rhs(y,m1,m2,L1_gd,L2_gd,g), t, theta0);
 theta1_est_GD = interp1(tsol_GD, ysol_GD(:,1), t);
 theta2_est_GD = interp1(tsol_GD, ysol_GD(:,3), t);
 
 % Simulate with IV estimates
-[tsol_IV, ysol_IV] = ode45(@(t,y) double_pendulum_rhs(t,y,m1,m2,L1_iv,L2_iv,g), t, theta0);
+[tsol_IV, ysol_IV] = ode45(@(t,y) double_pendulum_rhs(y,m1,m2,L1_iv,L2_iv,g), t, theta0);
 theta1_est_IV = interp1(tsol_IV, ysol_IV(:,1), t);
 theta2_est_IV = interp1(tsol_IV, ysol_IV(:,3), t);
 
@@ -187,7 +187,7 @@ grid on;
 
 %% Functions
 
-function dydt = double_pendulum_rhs(~, y, m1, m2, L1, L2, g)
+function dydt = double_pendulum_rhs(y, m1, m2, L1, L2, g)
     theta1 = y(1);
     dtheta1 = y(2);
     theta2 = y(3);
@@ -211,7 +211,7 @@ function dydt = double_pendulum_rhs(~, y, m1, m2, L1, L2, g)
 end
 
 function loss = compute_loss_gd(params, t, theta0, m1, m2, g, theta1_noisy, theta2_noisy)
-    [tsim, ysim] = ode45(@(t,y) double_pendulum_rhs(t,y,m1,m2,params(1),params(2),g), t, theta0);
+    [tsim, ysim] = ode45(@(t,y) double_pendulum_rhs(y,m1,m2,params(1),params(2),g), t, theta0);
 
     theta1_pred = interp1(tsim, ysim(:,1), t);
     theta2_pred = interp1(tsim, ysim(:,3), t);
